@@ -175,7 +175,7 @@ class Ball(RectSprite):
 
 def drawDigit(xy,n):
     xy = toScreenXY(xy)
-    w,h = toScreenWH((DIGIT_PIXEL_W,DIGIT_PIXEL_H))
+    w,h = toScreenWH((DIGIT_PIXEL_H,DIGIT_PIXEL_V))
     for segmentLetter in DIGITS[n]:
         segment = SEGMENTS[ord(segmentLetter)-ord("A")]
         sw,sh=(segment[2]-segment[0]+1)*w,(segment[3]-segment[1]+1)*h
