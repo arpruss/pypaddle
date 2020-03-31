@@ -30,12 +30,10 @@ SCORE_2_X_START = 192*H
 SCORE_Y_START = 16*V
 DIGIT_PIXEL_V = 4*V
 DIGIT_PIXEL_H = 4*H
-
 SEGMENTS = ((0,0,3,0),(3,0,3,3),(3,3,3,7),(0,7,3,7),(0,3,0,7),(0,0,0,3),(0,3,3,3))
 DIGITS = ("ABCDEF", "BC", "ABGED", "ABGCD", "FGBC", "AFGCD", "ACDEFG", "ABC", "ABCDEFG", "ABCDFG")
 
 FPS = 60.
-WINDOW_SIZE = (800,int(800*HEIGHT/WIDTH))
 BLACK = (0,0,0)
 WHITE = (200,200,200)
 
@@ -63,8 +61,19 @@ def getVSpeedLoad(y):
     else:
         return VLOADS[i]
 
-def toScreen(xy):
-    return ( int(0.5+WINDOW_SIZE[0]*xy[0]), int(0.5+WINDOW_SIZE[1]*xy[1]) )
+def getScale():        
+    if WINDOW_SIZE[0] * HEIGHT > WINDOW_SIZE[1] * WIDTH:
+        # wider than we need, match height
+        return float(WINDOW_SIZE[1]) * WIDTH / HEIGHT, float(WINDOW_SIZE[1])
+    else:
+        # match width
+        return float(WINDOW_SIZE[0]), float(WINDOW_SIZE[0]) * HEIGHT / WIDTH
+        
+def toScreenXY(xy):
+    return ( int(0.5+SCALE[0]*(xy[0]-0.5)+CENTER[0]), int(0.5+SCALE[1]*(xy[1]-0.5)+CENTER[1]) )
+        
+def toScreenWH(xy):
+    return ( int(0.5+SCALE[0]*xy[0]), int(0.5+SCALE[1]*xy[1]) )
         
 class RectSprite(object):
     def __init__(self,wh,xy=[0.5,0.5],vxvy=[0.,0.]):
@@ -84,8 +93,8 @@ class RectSprite(object):
         return (target.xy[1]-self.xy[1]) / target.wh[1]
         
     def draw(self):
-        x,y = toScreen((self.xy[0]-self.wh[0]*0.5, self.xy[1]-self.wh[1]*0.5))
-        w,h = toScreen(self.wh)
+        x,y = toScreenXY((self.xy[0]-self.wh[0]*0.5, self.xy[1]-self.wh[1]*0.5))
+        w,h = toScreenWH(self.wh)
         pygame.draw.rect(surface, WHITE, (x,y,w,h))
         
 class Bat(RectSprite):
@@ -167,8 +176,8 @@ class Ball(RectSprite):
 def drawDigit(xy,n):
     for segmentLetter in DIGITS[n]:
         segment = SEGMENTS[ord(segmentLetter)-ord("A")]
-        sx,sy=toScreen((xy[0]+segment[0]*DIGIT_PIXEL_H,xy[1]+segment[1]*DIGIT_PIXEL_V))
-        w,h=toScreen(((segment[2]-segment[0]+1)*DIGIT_PIXEL_H,(segment[3]-segment[1]+1)*DIGIT_PIXEL_V))
+        w,h=toScreenWH(((segment[2]-segment[0]+1)*DIGIT_PIXEL_H,(segment[3]-segment[1]+1)*DIGIT_PIXEL_V))
+        sx,sy=toScreenXY((xy[0]+segment[0]*DIGIT_PIXEL_H,xy[1]+segment[1]*DIGIT_PIXEL_V))
         pygame.draw.rect(surface, WHITE, (sx,sy,w,h))
         
 def drawScore(xy,score):
@@ -179,16 +188,21 @@ def drawScore(xy,score):
         if score == 0:
             break
         x -= DIGIT_PIXEL_H*8
-        
-def adjustJoystick(y):
-    y /= JOY_RANGE
-    return clamp(y,-1,1)
 
+def getDisplaySize():
+    info = pygame.display.Info()
+    return info.current_w, info.current_h
+        
+joy = None    
 scores = None
 hits = None
 ball = None
 bats = None        
         
+def adjustJoystick(y):
+    y /= JOY_RANGE
+    return clamp(y,-1,1)
+
 def initGame():
     global scores, hits, ball, bats
     
@@ -207,18 +221,23 @@ def noGame():
     
 def net():
     y = 0
-    w,h = toScreen((NET_WIDTH,NET_STRIPE_HEIGHT))
+    w,h = toScreenWH((NET_WIDTH,NET_STRIPE_HEIGHT))
     while y < 1.:
-        sx,sy=toScreen((NET_X_START,y))
+        sx,sy=toScreenXY((NET_X_START,y))
         pygame.draw.rect(surface, WHITE, (sx,sy,w,h))
         y += 2*NET_STRIPE_HEIGHT
     
 def drawBoard():
     surface.fill(BLACK)
     net()
-
-joy = None    
     
+def getDimensions():
+    global WINDOW_SIZE, SCALE, CENTER, myfont
+    WINDOW_SIZE = surface.get_size()
+    SCALE = getScale()
+    CENTER = WINDOW_SIZE[0]//2, WINDOW_SIZE[1]//2
+    myfont = pygame.font.SysFont(pygame.font.get_default_font(),int(WINDOW_SIZE[1]/10.))
+
 def initJoystick():    
     global joy
 
@@ -253,12 +272,15 @@ def initJoystick():
 
 pygame.init()
 pygame.font.init()
-myfont = pygame.font.SysFont(pygame.font.get_default_font(),int(WINDOW_SIZE[1]/10.))
 pygame.key.set_repeat(300,100)
 os.environ['SDL_VIDEO_CENTERED'] = '1'
 
 # Create pygame screen and objects
-surface = pygame.display.set_mode(WINDOW_SIZE)
+if len(sys.argv)>1 and sys.argv[1].startswith("w"):
+    surface = pygame.display.set_mode((800,600), pygame.RESIZABLE)
+else:
+    surface = pygame.display.set_mode(getDisplaySize(), pygame.FULLSCREEN)
+getDimensions()
 pygame.display.set_caption("apong")
 clock = pygame.time.Clock()
 
@@ -275,9 +297,11 @@ while running:
     for event in pygame.event.get():        
         if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
             running = False
-        if not bats and event.type == pygame.JOYBUTTONDOWN:
+        elif not bats and event.type == pygame.JOYBUTTONDOWN:
             initGame()
-
+        elif event.type == pygame.VIDEORESIZE:
+            surface = pygame.display.set_mode((event.w, event.h),pygame.RESIZABLE)
+            getDimensions()
     dt = clock.tick(FPS) / 1000.
     drawBoard()
     drawScore((SCORE_1_X_START,SCORE_Y_START),scores[0])
