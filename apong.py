@@ -24,6 +24,14 @@ NET_X_START   = 176*H
 NET_STRIPE_HEIGHT = 4*V
 BAT_2_X_START = 304*H
 BALL_X_START = NET_X_START + 6*H
+SCORE_1_X_START = 48*H
+SCORE_2_X_START = 192*H
+SCORE_Y_START = 16*V
+DIGIT_PIXEL_V = 4*V
+DIGIT_PIXEL_H = 4*H
+
+SEGMENTS = ((0,0,3,0),(3,0,3,3),(3,3,3,7),(0,7,3,7),(0,3,0,7),(0,0,0,3),(0,3,3,3))
+DIGITS = (b"ABCDEF", b"BC", b"ABGED", b"ABGCD", b"FGBC", b"AFGCD", b"ACDEFG", b"ABC", b"ABCDEFG", b"ABCDEFG")
 
 FPS = 60.
 WINDOW_SIZE = (800,int(800*HEIGHT/WIDTH))
@@ -155,6 +163,22 @@ class Ball(RectSprite):
             return 0
             
         return None
+
+def drawDigit(xy,n):
+    for segmentLetter in DIGITS[n]:
+        segment = SEGMENTS[ord(segmentLetter)-ord(b'A')]
+        sx,sy=toScreen((xy[0]+segment[0]*DIGIT_PIXEL_H,xy[1]+segment[1]*DIGIT_PIXEL_V))
+        w,h=toScreen((segment[2]-segment[0])*DIGIT_PIXEL_H,(segment[3]-segment[1])*DIGIT_PIXEL_V)
+        pygame.draw.rect(surface, WHITE, (sx,sy,w,h))
+        
+def drawScore(xy,score):
+    x = xy[0]+DIGIT_PIXEL_H*4*3
+    while True:
+        drawDigit((x,xy[1]),score%10)
+        score = score // 10
+        if score == 0;
+            break
+        x -= DIGIT_PIXEL_H*4
         
 def adjustJoystick(y):
     y /= JOY_RANGE
@@ -185,6 +209,8 @@ def net():
 def drawBoard():
     surface.fill(BLACK)
     net()
+    drawScore((SCORE_1_X_START,SCORE_Y_START),scores[0])
+    drawScore((SCORE_2_X_START,SCORE_Y_START),scores[1])
 
 joy = None    
     
@@ -237,7 +263,6 @@ while running:
         bat.setPosition(adjustJoystick(joy.get_axis(bat.index)))
     if hit is not None:
         scores[hit] += 1
-        print(scores)
     ball.draw()
     for bat in bats:
         bat.draw()
