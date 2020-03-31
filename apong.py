@@ -174,11 +174,13 @@ class Ball(RectSprite):
         return None
 
 def drawDigit(xy,n):
+    xy = toScreenXY(xy)
+    w,h = toScreenWH((DIGIT_PIXEL_W,DIGIT_PIXEL_H))
     for segmentLetter in DIGITS[n]:
         segment = SEGMENTS[ord(segmentLetter)-ord("A")]
-        w,h=toScreenWH(((segment[2]-segment[0]+1)*DIGIT_PIXEL_H,(segment[3]-segment[1]+1)*DIGIT_PIXEL_V))
-        sx,sy=toScreenXY((xy[0]+segment[0]*DIGIT_PIXEL_H,xy[1]+segment[1]*DIGIT_PIXEL_V))
-        pygame.draw.rect(surface, WHITE, (sx,sy,w,h))
+        sw,sh=(segment[2]-segment[0]+1)*w,(segment[3]-segment[1]+1)*h
+        sx,sy=xy[0]+segment[0]*w,xy[1]+segment[1]*h
+        pygame.draw.rect(surface, WHITE, (sx,sy,sw,sh))
         
 def drawScore(xy,score):
     x = xy[0]+DIGIT_PIXEL_H*4*3
