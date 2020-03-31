@@ -2,6 +2,7 @@ import math
 import time
 import pygame
 import os
+import sys
 import random
 
 SERVE_DELAY = 1.5
@@ -31,7 +32,7 @@ DIGIT_PIXEL_V = 4*V
 DIGIT_PIXEL_H = 4*H
 
 SEGMENTS = ((0,0,3,0),(3,0,3,3),(3,3,3,7),(0,7,3,7),(0,3,0,7),(0,0,0,3),(0,3,3,3))
-DIGITS = (b"ABCDEF", b"BC", b"ABGED", b"ABGCD", b"FGBC", b"AFGCD", b"ACDEFG", b"ABC", b"ABCDEFG", b"ABCDEFG")
+DIGITS = ("ABCDEF", "BC", "ABGED", "ABGCD", "FGBC", "AFGCD", "ACDEFG", "ABC", "ABCDEFG", "ABCDFG")
 
 FPS = 60.
 WINDOW_SIZE = (800,int(800*HEIGHT/WIDTH))
@@ -63,7 +64,7 @@ def getVSpeedLoad(y):
         return VLOADS[i]
 
 def toScreen(xy):
-    return ( int(WINDOW_SIZE[0]*xy[0]), int(WINDOW_SIZE[1]*xy[1]) )
+    return ( int(0.5+WINDOW_SIZE[0]*xy[0]), int(0.5+WINDOW_SIZE[1]*xy[1]) )
         
 class RectSprite(object):
     def __init__(self,wh,xy=[0.5,0.5],vxvy=[0.,0.]):
@@ -101,7 +102,6 @@ class Ball(RectSprite):
     def __init__(self,xy=[0.5,0.5],load=VLOADS[-1]//2,direction=1):
         super().__init__((BALL_WIDTH,BALL_HEIGHT),xy=xy)
         self.load = load
-        print(load)
         self.minY = self.wh[1]*0.5
         self.maxY = 1-self.wh[1]*0.5
         self.minX = self.wh[0]*0.5
@@ -154,21 +154,21 @@ class Ball(RectSprite):
         if self.xy[0] < self.minX:
             # right scores
             self.load = VLOADS[-1] - self.load
-            self.serve(-1)
+            self.serve(-1 if bats else 1)
             return 1
         elif self.xy[0] > self.maxX:
             # left scores
             self.load = VLOADS[-1] - self.load
-            self.serve(1)
+            self.serve(1 if bats else -1)
             return 0
             
         return None
 
 def drawDigit(xy,n):
     for segmentLetter in DIGITS[n]:
-        segment = SEGMENTS[ord(segmentLetter)-ord(b'A')]
+        segment = SEGMENTS[ord(segmentLetter)-ord("A")]
         sx,sy=toScreen((xy[0]+segment[0]*DIGIT_PIXEL_H,xy[1]+segment[1]*DIGIT_PIXEL_V))
-        w,h=toScreen((segment[2]-segment[0])*DIGIT_PIXEL_H,(segment[3]-segment[1])*DIGIT_PIXEL_V)
+        w,h=toScreen(((segment[2]-segment[0]+1)*DIGIT_PIXEL_H,(segment[3]-segment[1]+1)*DIGIT_PIXEL_V))
         pygame.draw.rect(surface, WHITE, (sx,sy,w,h))
         
 def drawScore(xy,score):
@@ -176,9 +176,9 @@ def drawScore(xy,score):
     while True:
         drawDigit((x,xy[1]),score%10)
         score = score // 10
-        if score == 0;
+        if score == 0:
             break
-        x -= DIGIT_PIXEL_H*4
+        x -= DIGIT_PIXEL_H*8
         
 def adjustJoystick(y):
     y /= JOY_RANGE
@@ -198,6 +198,13 @@ def initGame():
     
     ball = Ball(xy=(NET_X_START,0.5),load=random.randint(0,VLOADS[-1]))
     
+def noGame():
+    global scores, hits, ball, bats
+    
+    bats = tuple()
+    hits = 0   
+    ball = Ball(xy=(NET_X_START,0.5),load=random.randint(0,VLOADS[-1]))
+    
 def net():
     y = 0
     w,h = toScreen((NET_WIDTH,NET_STRIPE_HEIGHT))
@@ -209,8 +216,6 @@ def net():
 def drawBoard():
     surface.fill(BLACK)
     net()
-    drawScore((SCORE_1_X_START,SCORE_Y_START),scores[0])
-    drawScore((SCORE_2_X_START,SCORE_Y_START),scores[1])
 
 joy = None    
     
@@ -220,6 +225,11 @@ def initJoystick():
     joy = None
     
     while joy is None:
+        clock.tick(FPS)
+        for event in pygame.event.get():        
+            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
+                pygame.quit()
+                sys.exit(0)
         pygame.joystick.init()
         count = pygame.joystick.get_count()
         if count:
@@ -227,17 +237,23 @@ def initJoystick():
             for i in range(1,count):
                 j = pygame.joystick.Joystick(i)
                 n = j.get_name().lower()
-                print(n)
                 if 'paddle' in n or 'stelladaptor' in n:
                     joy = j
                     break
             joy.init()
-            print("Using",joy.get_name())
         else:
-            print("Insert paddles")
-            time.sleep(1)
+            pygame.event.pump()
+            surface.fill(BLACK)
+            text = myfont.render("Insert paddles", True, WHITE)
+            textRect = text.get_rect()
+            textRect.center = (WINDOW_SIZE[0]//2,WINDOW_SIZE[1]//2)
+            surface.blit(text, textRect)
+            pygame.joystick.quit()
+            pygame.display.flip()
 
 pygame.init()
+pygame.font.init()
+myfont = pygame.font.SysFont(pygame.font.get_default_font(),int(WINDOW_SIZE[1]/10.))
 pygame.key.set_repeat(300,100)
 os.environ['SDL_VIDEO_CENTERED'] = '1'
 
@@ -245,27 +261,37 @@ os.environ['SDL_VIDEO_CENTERED'] = '1'
 surface = pygame.display.set_mode(WINDOW_SIZE)
 pygame.display.set_caption("apong")
 clock = pygame.time.Clock()
+
 initJoystick()
 
-initGame()
+scores = [0,0]
+noGame()
 
 running = True
+playing = False
 
 while running:
     pygame.event.pump()
     for event in pygame.event.get():        
-        if event.type == pygame.QUIT:
+        if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
             running = False
+        if not bats and event.type == pygame.JOYBUTTONDOWN:
+            initGame()
+
     dt = clock.tick(FPS) / 1000.
     drawBoard()
-    hit = ball.updateXY(dt) 
+    drawScore((SCORE_1_X_START,SCORE_Y_START),scores[0])
+    drawScore((SCORE_2_X_START,SCORE_Y_START),scores[1])
     for bat in bats:
         bat.setPosition(adjustJoystick(joy.get_axis(bat.index)))
-    if hit is not None:
-        scores[hit] += 1
+    edge = ball.updateXY(dt) 
     ball.draw()
     for bat in bats:
         bat.draw()
     pygame.display.flip()
+    if edge is not None and bats:
+        scores[edge] += 1
+        if scores[edge] == 10:
+            noGame()
 
 pygame.quit()
