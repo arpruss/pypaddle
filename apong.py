@@ -8,11 +8,15 @@ BAT_HEIGHT = 16*V
 BAT_WIDTH = 4*H
 BALL_HEIGHT = 4*V
 BALL_WIDTH = 4*H
+NET_WIDTH = 2*H 
 HSPEEDS = ( (0,0.26), (4,0.39), (12,0.53) ) # screen widths per second
 VSPEED_LOADS = ( 7,8,9,10,10,11,12,13 )
 VSPEEDS = (0.680,0.455,0.228,0,-0.226,-0.462,-0.695)
-TOP_GAP = 2*V
-BOTTOM_GAP = 2*V
+TOP_GAP = 6*V
+BOTTOM_GAP = 4*V
+BAT_1_X_START = 48*H
+NET_X_START   = 176*H
+BAT_2_X_START = 304*H
 
 hits = 0
 
@@ -57,7 +61,8 @@ class Bat(object):
     def __init__(self,index):
         super().__init__((BAT_WIDTH,BAT_HEIGHT))
         self.index = index
-        self.direction = (-1,0)[index]
+        self.direction = (1,-1)[index]
+        self.xy[0] = (BAT_1_X_START,BAT_2_X_START)[index] + self.wh[0]*0.5
         
     def setPosition(self,offset):
         self.xy[1] = (1.-TOP_GAP-BOTTOM_GAP-self.wh[1])*0.5*(offset+1) + TOP_GAP + 0.5*self.wh[1]
