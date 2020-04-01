@@ -37,7 +37,7 @@ FPS = 60.
 BLACK = (0,0,0)
 WHITE = (200,200,200)
 
-JOY_RANGE = 0.8
+JOY_RANGE = 0.7
 
 hits = 0
 
