@@ -323,7 +323,7 @@ if len(sys.argv)>1 and "q" in sys.argv[1]:
     SILENT = True
 pygame.mouse.set_visible(False)
 getDimensions()
-pygame.display.set_caption("apong")
+pygame.display.set_caption("pypaddle")
 clock = pygame.time.Clock()
 
 initJoystick()
