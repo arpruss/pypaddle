@@ -263,7 +263,7 @@ def initJoystick():
                     break
             if joy is not None: 
                 joy.init()
-        else:
+        if joy is None:
             pygame.event.pump()
             surface.fill(BLACK)
             text = myfont.render("Insert paddles", True, WHITE)
@@ -283,7 +283,7 @@ if len(sys.argv)>1 and sys.argv[1].startswith("w"):
     surface = pygame.display.set_mode((800,600), pygame.RESIZABLE)
 else:
     surface = pygame.display.set_mode(getDisplaySize(), pygame.FULLSCREEN)
-    pygame.mouse.set_visible(False)
+pygame.mouse.set_visible(False)
 getDimensions()
 pygame.display.set_caption("apong")
 clock = pygame.time.Clock()
