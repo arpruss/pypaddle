@@ -170,14 +170,22 @@ class Ball(RectSprite):
                 self.vxvy[1] = VSPEEDS[self.load]
                 
         if self.xy[0] < self.minX:
-            # right scores
-            self.load = VLOADS[-1] - self.load
-            self.serve(-1 if bats else 1)
+            if bats:
+                # right scores
+                self.load = VLOADS[-1] - self.load
+                self.serve(-1)
+            else:
+                self.vxvy[0] = abs(self.vxvy[0])
+                self.xy[0] = self.minX
             return 1
         elif self.xy[0] > self.maxX:
-            # left scores
-            self.load = VLOADS[-1] - self.load
-            self.serve(1 if bats else -1)
+            if bats:
+                # left scores
+                self.load = VLOADS[-1] - self.load
+                self.serve(1)
+            else:
+                self.vxvy[0] = -abs(self.vxvy[0])
+                self.xy[0] = self.maxX
             return 0
             
         return None
@@ -228,7 +236,7 @@ def noGame():
     
     bats = tuple()
     hits = 0   
-    ball = Ball(xy=(NET_X_START,0.5),load=random.randint(0,VLOADS[-1]))
+    ball = Ball(xy=(NET_X_START,0.5),load=1)
     
 def net():
     y = 0
