@@ -261,7 +261,8 @@ def initJoystick():
                 if 'paddle' in n or 'stelladaptor' in n:
                     joy = j
                     break
-            joy.init()
+            if joy is not None: 
+                joy.init()
         else:
             pygame.event.pump()
             surface.fill(BLACK)
