@@ -254,8 +254,8 @@ def initJoystick():
         pygame.joystick.init()
         count = pygame.joystick.get_count()
         if count:
-            joy = pygame.joystick.Joystick(0)
-            for i in range(1,count):
+            #joy = pygame.joystick.Joystick(0)
+            for i in range(0,count):
                 j = pygame.joystick.Joystick(i)
                 n = j.get_name().lower()
                 if 'paddle' in n or 'stelladaptor' in n:
@@ -282,6 +282,7 @@ if len(sys.argv)>1 and sys.argv[1].startswith("w"):
     surface = pygame.display.set_mode((800,600), pygame.RESIZABLE)
 else:
     surface = pygame.display.set_mode(getDisplaySize(), pygame.FULLSCREEN)
+    pygame.mouse.set_visible(False)
 getDimensions()
 pygame.display.set_caption("apong")
 clock = pygame.time.Clock()
