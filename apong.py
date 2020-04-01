@@ -4,6 +4,7 @@ import pygame
 import os
 import sys
 import random
+import struct
 
 SERVE_DELAY = 1.5
 HEIGHT = 262-16
@@ -36,8 +37,13 @@ DIGITS = ("ABCDEF", "BC", "ABGED", "ABGCD", "FGBC", "AFGCD", "ACDEFG", "ABC", "A
 FPS = 60.
 BLACK = (0,0,0)
 WHITE = (200,200,200)
-
+SAMPLE_RATE = 22050
+HIT_SOUND = (491,0.016)
+SCORE_SOUND = (246,0.220)
+BOUNCE_SOUND = (246,0.016)
 JOY_RANGE = 0.7
+
+SILENT = False
 
 hits = 0
 
@@ -148,13 +154,16 @@ class Ball(RectSprite):
         if self.xy[1]>self.maxY:
             self.xy[1]=clamp(self.maxY*2-self.xy[1],self.minY,self.maxY)
             self.reverseVertical()
+            sound(bounceSound)
         elif self.xy[1]<self.minY:
             self.xy[1]=clamp(self.minY*2-self.xy[1],self.minY,self.maxY)
             self.reverseVertical()
+            sound(bounceSound)
             
         for bat in bats:
             y = bat.hit(self)
             if y is not None:
+                sound(hitSound)
                 hits += 1
                 self.vxvy[0] = bat.direction * getHSpeed()
                 self.load = getVSpeedLoad(y)
@@ -233,6 +242,26 @@ def drawBoard():
     surface.fill(BLACK)
     net()
     
+def sound(s):
+    if not SILENT:
+        pygame.mixer.Sound.play(s)
+    
+def wavHeader(sampleRate,size,channels,dataSize):
+    return struct.pack("<4sL4s4sHHLLHH4sL", b"RIFF", 36+8+dataSize, b"WAVE", b"fmt ", 1, channels,
+            sampleRate, sampleRate*channels*size//8, channels*size//8, size, b"data", dataSize)
+    
+def makeSound(frequency,duration):
+    numSamples = int(0.5 + duration*SAMPLE_RATE)
+    halfPeriod = int(0.5 + 0.5 * SAMPLE_RATE / frequency)
+    
+    data = bytearray()
+    value = 0
+    for i in range(int(0.5+float(numSamples)/halfPeriod)):
+        data += bytearray([value]*halfPeriod)
+        value ^= 0xFF
+        
+    return pygame.mixer.Sound(bytearray(wavHeader(SAMPLE_RATE,8,1,len(data))) + data)
+
 def getDimensions():
     global WINDOW_SIZE, SCALE, CENTER, myfont
     WINDOW_SIZE = surface.get_size()
@@ -254,7 +283,6 @@ def initJoystick():
         pygame.joystick.init()
         count = pygame.joystick.get_count()
         if count:
-            #joy = pygame.joystick.Joystick(0)
             for i in range(0,count):
                 j = pygame.joystick.Joystick(i)
                 n = j.get_name().lower()
@@ -272,17 +300,27 @@ def initJoystick():
             surface.blit(text, textRect)
             pygame.joystick.quit()
             pygame.display.flip()
+            sound(hitSound)
+            time.sleep(1)
 
 pygame.init()
+if not SILENT:
+    pygame.mixer.init(SAMPLE_RATE,8,1)
+hitSound = makeSound(*HIT_SOUND)
+scoreSound = makeSound(*SCORE_SOUND)
+bounceSound = makeSound(*BOUNCE_SOUND)
+
 pygame.font.init()
 pygame.key.set_repeat(300,100)
 os.environ['SDL_VIDEO_CENTERED'] = '1'
 
 # Create pygame screen and objects
-if len(sys.argv)>1 and sys.argv[1].startswith("w"):
+if len(sys.argv)>1 and "w" in sys.argv[1]:
     surface = pygame.display.set_mode((800,600), pygame.RESIZABLE)
 else:
     surface = pygame.display.set_mode(getDisplaySize(), pygame.FULLSCREEN)
+if len(sys.argv)>1 and "q" in sys.argv[1]:
+    SILENT = True
 pygame.mouse.set_visible(False)
 getDimensions()
 pygame.display.set_caption("apong")
@@ -318,6 +356,7 @@ while running:
         bat.draw()
     pygame.display.flip()
     if edge is not None and bats:
+        sound(scoreSound)
         scores[edge] += 1
         if scores[edge] == 10:
             noGame()
