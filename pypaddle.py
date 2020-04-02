@@ -36,7 +36,8 @@ DIGITS = ("ABCDEF", "BC", "ABGED", "ABGCD", "FGBC", "AFGCD", "ACDEFG", "ABC", "A
 
 FPS = 60.
 BLACK = (0,0,0)
-WHITE = (200,200,200)
+WHITE = (220,220,220)
+GRAY = (180,180,180)
 SAMPLE_RATE = 22050
 HIT_SOUND = (491,0.016)
 SCORE_SOUND = (246,0.220)
@@ -66,6 +67,14 @@ def getVSpeedLoad(y):
         return VLOADS[-1]
     else:
         return VLOADS[i]
+        
+def sign(x):
+    if x < 0:
+        return -1
+    elif x > 0:
+        return 1
+    else:
+        return 0
 
 def getScale():        
     if WINDOW_SIZE[0] * HEIGHT > WINDOW_SIZE[1] * WIDTH:
@@ -96,12 +105,12 @@ class RectSprite(object):
         for i in range(2):
             if abs(self.xy[i]-target.xy[i]) >= (self.wh[i]+target.wh[i]) * 0.5:
                 return None
-        return (target.xy[1]-self.xy[1]) / target.wh[1]
+        return (self.xy[1]-target.xy[1]) / self.wh[1]
         
-    def draw(self):
+    def draw(self,color=WHITE):
         x,y = toScreenXY((self.xy[0]-self.wh[0]*0.5, self.xy[1]-self.wh[1]*0.5))
         w,h = toScreenWH(self.wh)
-        pygame.draw.rect(surface, WHITE, (x,y,w,h))
+        pygame.draw.rect(surface, color, (x,y,w,h))
         
 class Bat(RectSprite):
     def __init__(self,index):
@@ -114,40 +123,42 @@ class Bat(RectSprite):
         self.xy[1] = (1.-TOP_GAP-BOTTOM_GAP-self.wh[1])*0.5*(offset+1) + TOP_GAP + 0.5*self.wh[1]
 
 class Ball(RectSprite):
-    def __init__(self,xy=[0.5,0.5],load=VLOADS[-1]//2,direction=1):
+    def __init__(self,xy=[0.4,0],load=0,direction=1):
         super().__init__((BALL_WIDTH,BALL_HEIGHT),xy=xy)
-        self.load = load
+        self.hits = 0
+        self.vxvy[0] = direction*getHSpeed()
+        self.serve_direction = 1
         self.minY = self.wh[1]*0.5
         self.maxY = 1-self.wh[1]*0.5
         self.minX = self.wh[0]*0.5
         self.maxX = 1-self.wh[0]*0.5
-        self.serve(direction)
+        self.serve_direction = None
+        self.wait = 0
+        self.setLoad(load)
+        
+    def setLoad(self,load):
+        self.load = load
+        self.vxvy[1] = VSPEEDS[load]        
         
     def draw(self):
         if self.wait <= 0:
             super().draw()
-        
-    def serve(self,direction):
-        global hits
-        
-        hits = 0
-        self.xy[0] = BALL_X_START - 0.5*self.wh[0]
-        self.xy[1] = random.uniform(BOTTOM_GAP+self.wh[1]*0.5,1-TOP_GAP-self.wh[1]*0.5)
-        self.vxvy[0] = direction*getHSpeed()
-        self.vxvy[1] = VSPEEDS[self.load]
+            
+    def serve(self):
         self.wait = SERVE_DELAY
         
     def reverseVertical(self):
-        self.load = VLOADS[-1]-self.load
-        self.vxvy[1] = VSPEEDS[self.load]
+        self.setLoad(VLOADS[-1]-self.load)
         
     def updateXY(self, dt):
-        global hits
-        
         if self.wait > 0:
             self.wait -= dt
-            if self.wait > 0:
-                return
+            if self.wait <= 0:
+                self.xy[0] = BALL_X_START - 0.5*self.wh[0]
+                if self.serve_direction is None:
+                    self.serve_direction = sign(self.vxvy[0])
+                self.vxvy[0] = self.serve_direction*getHSpeed()
+                self.hits = 0
         
         super().updateXY(dt)
         
@@ -160,33 +171,33 @@ class Ball(RectSprite):
             self.reverseVertical()
             sound(bounceSound)
             
-        for bat in bats:
-            y = bat.hit(self)
-            if y is not None:
-                sound(hitSound)
-                hits += 1
-                self.vxvy[0] = bat.direction * getHSpeed()
-                self.load = getVSpeedLoad(y)
-                self.vxvy[1] = VSPEEDS[self.load]
+        if self.wait <= 0:
+            for bat in bats:
+                y = bat.hit(self)
+                if y is not None:
+                    sound(hitSound)
+                    self.hits += 1
+                    self.vxvy[0] = bat.direction * getHSpeed()
+                    self.setLoad(getVSpeedLoad(y))
                 
         if self.xy[0] < self.minX:
-            if bats:
+            self.vxvy[0] = abs(self.vxvy[0])
+            self.xy[0] = self.minX
+            if bats and self.wait <= 0:
                 # right scores
-                self.load = VLOADS[-1] - self.load
-                self.serve(-1)
-            else:
-                self.vxvy[0] = abs(self.vxvy[0])
-                self.xy[0] = self.minX
-            return 1
+                self.serve_direction = -1
+                self.wait = SERVE_DELAY
+                return 1
+                
         elif self.xy[0] > self.maxX:
-            if bats:
+            self.vxvy[0] = -abs(self.vxvy[0])
+            self.xy[0] = self.maxX
+            
+            if bats and self.wait <= 0:
                 # left scores
-                self.load = VLOADS[-1] - self.load
-                self.serve(1)
-            else:
-                self.vxvy[0] = -abs(self.vxvy[0])
-                self.xy[0] = self.maxX
-            return 0
+                self.serve_direction = 1
+                self.wait = SERVE_DELAY
+                return 0
             
         return None
 
@@ -214,7 +225,6 @@ def getDisplaySize():
         
 joy = None    
 scores = None
-hits = None
 ball = None
 bats = None        
         
@@ -222,21 +232,29 @@ def adjustJoystick(y):
     y /= JOY_RANGE
     return clamp(y,-1,1)
 
+def attract():
+    global bats
+
+    bats = []
+    ball.setLoad(0)
+    
 def initGame():
-    global scores, hits, ball, bats
+    global scores, ball
+    
+    bats = []
+    scores = [0,0]
+    
+    ball = Ball()
+    attract()
+    
+def start():
+    global bats
     
     bats = ( Bat(0), Bat(1) )
-    scores = [0 for bat in bats]
-    hits = 0
     
-    ball = Ball(xy=(NET_X_START,0.5),load=random.randint(0,VLOADS[-1]))
+    scores = [0,0]
     
-def noGame():
-    global scores, hits, ball, bats
-    
-    bats = tuple()
-    hits = 0   
-    ball = Ball(xy=(NET_X_START,0.5),load=1)
+    ball.serve()
     
 def net():
     y = 0
@@ -337,7 +355,7 @@ clock = pygame.time.Clock()
 initJoystick()
 
 scores = [0,0]
-noGame()
+initGame()
 
 running = True
 playing = False
@@ -348,7 +366,7 @@ while running:
         if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
             running = False
         elif not bats and event.type == pygame.JOYBUTTONDOWN:
-            initGame()
+            start()
         elif event.type == pygame.VIDEORESIZE:
             surface = pygame.display.set_mode((event.w, event.h),pygame.RESIZABLE)
             getDimensions()
@@ -362,11 +380,11 @@ while running:
     ball.draw()
     for bat in bats:
         bat.draw()
-    pygame.display.flip()
     if edge is not None and bats:
         sound(scoreSound)
         scores[edge] += 1
-        if scores[edge] == 10:
-            noGame()
+        if scores[edge] == 11:
+            attract()
+    pygame.display.flip()
 
 pygame.quit()
