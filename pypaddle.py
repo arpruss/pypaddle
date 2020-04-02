@@ -208,7 +208,7 @@ def drawDigit(xy,n):
         segment = SEGMENTS[ord(segmentLetter)-ord("A")]
         sw,sh=(segment[2]-segment[0]+1)*w,(segment[3]-segment[1]+1)*h
         sx,sy=xy[0]+segment[0]*w,xy[1]+segment[1]*h
-        pygame.draw.rect(surface, WHITE, (sx,sy,sw,sh))
+        pygame.draw.rect(surface, GRAY, (sx,sy,sw,sh))
         
 def drawScore(xy,score):
     x = xy[0]+DIGIT_PIXEL_H*4*3
@@ -261,7 +261,7 @@ def net():
     w,h = toScreenWH((NET_WIDTH,NET_STRIPE_HEIGHT))
     while y < 1.:
         sx,sy=toScreenXY((NET_X_START,y))
-        pygame.draw.rect(surface, WHITE, (sx,sy,w,h))
+        pygame.draw.rect(surface, GRAY, (sx,sy,w,h))
         y += 2*NET_STRIPE_HEIGHT
     
 def drawBoard():
