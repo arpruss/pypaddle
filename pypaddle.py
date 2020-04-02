@@ -7,10 +7,10 @@ import random
 import struct
 
 SERVE_DELAY = 1.5
-HEIGHT = 262-16
-V = 1./HEIGHT
-WIDTH = 455-80
-H = 1./WIDTH
+HEIGHT = 3
+V = 1./(262-16)
+WIDTH = 4
+H = 1./(455-80)
 BAT_HEIGHT = 16*V
 BAT_WIDTH = 4*H
 BALL_HEIGHT = 4*V
