@@ -38,7 +38,7 @@ FPS = 60.
 BLACK = (0,0,0)
 WHITE = (220,220,220)
 GRAY = (180,180,180)
-SAMPLE_RATE = 22050
+SAMPLE_RATE = 44100
 HIT_SOUND = (491,0.016)
 SCORE_SOUND = (246,0.220)
 BOUNCE_SOUND = (246,0.016)
@@ -329,9 +329,10 @@ def initJoystick():
             sound(hitSound)
             time.sleep(1)
 
-pygame.init()
 if not SILENT:
-    pygame.mixer.init(SAMPLE_RATE,8,1)
+    pygame.mixer.pre_init(SAMPLE_RATE,8,1,64)
+    pygame.mixer.init()
+pygame.init()
 hitSound = makeSound(*HIT_SOUND)
 scoreSound = makeSound(*SCORE_SOUND)
 bounceSound = makeSound(*BOUNCE_SOUND)
