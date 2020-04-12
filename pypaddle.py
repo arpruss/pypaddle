@@ -248,7 +248,7 @@ def initGame():
     attract()
     
 def start():
-    global bats
+    global bats, scores
     
     bats = ( Bat(0), Bat(1) )
     
