@@ -46,12 +46,10 @@ JOY_RANGE = 0.7
 
 SILENT = False
 
-hits = 0
-
 def clamp(x,m,M):
     return max(min(x,M),m)
 
-def getHSpeed():
+def getHSpeed(hits):
     prev = 0
     for hs in HSPEEDS:
         if hs[0] > hits:
@@ -126,7 +124,7 @@ class Ball(RectSprite):
     def __init__(self,xy=[0.4,0],load=0,direction=1):
         super().__init__((BALL_WIDTH,BALL_HEIGHT),xy=xy)
         self.hits = 0
-        self.vxvy[0] = direction*getHSpeed()
+        self.vxvy[0] = direction*getHSpeed(self.hits)
         self.serve_direction = 1
         self.minY = self.wh[1]*0.5
         self.maxY = 1-self.wh[1]*0.5
@@ -157,8 +155,8 @@ class Ball(RectSprite):
                 self.xy[0] = BALL_X_START - 0.5*self.wh[0]
                 if self.serve_direction is None:
                     self.serve_direction = sign(self.vxvy[0])
-                self.vxvy[0] = self.serve_direction*getHSpeed()
                 self.hits = 0
+                self.vxvy[0] = self.serve_direction*getHSpeed(self.hits)
         
         super().updateXY(dt)
         
@@ -177,7 +175,7 @@ class Ball(RectSprite):
                 if y is not None:
                     sound(hitSound)
                     self.hits += 1
-                    self.vxvy[0] = bat.direction * getHSpeed()
+                    self.vxvy[0] = bat.direction * getHSpeed(self.hits)
                     self.setLoad(getVSpeedLoad(y))
                 
         if self.xy[0] < self.minX:
